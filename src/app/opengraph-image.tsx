@@ -1,0 +1,112 @@
+import { ImageResponse } from "next/og";
+import { SITE } from "@/lib/seo/site";
+
+// Node runtime (not edge): the webpack build bundles next/og's satori+resvg
+// past Vercel's 1 MB edge-function limit. OG image generation is cached and
+// not latency-critical, so the Node serverless runtime (no size cap) fits.
+export const runtime = "nodejs";
+export const alt = SITE.title;
+export const size = { width: 1200, height: 630 };
+export const contentType = "image/png";
+
+export default async function OpengraphImage() {
+  // Display host derived from the configured site URL, not hardcoded, so the
+  // badge stays correct if the domain changes.
+  const displayHost = SITE.url.replace(/^https?:\/\//, "").replace(/\/$/, "");
+  return new ImageResponse(
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "flex-start",
+        padding: "80px",
+        background: "#07070c",
+        position: "relative",
+      }}
+    >
+
+      {/* Logo mark: rising-N with spark */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginBottom: 32,
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            width: 72,
+            height: 72,
+            borderRadius: 16,
+            background: "#0891b2",
+            fontSize: 40,
+            fontWeight: 800,
+            color: "#ffffff",
+          }}
+        >
+          A
+        </div>
+        <div
+          style={{
+            marginLeft: 8,
+            fontSize: 28,
+            color: "#22d3ee",
+            fontWeight: 700,
+          }}
+        >
+          *
+        </div>
+      </div>
+
+      {/* Name */}
+      <div
+        style={{
+          fontSize: 72,
+          fontWeight: 800,
+          color: "#ffffff",
+          lineHeight: 1.1,
+          letterSpacing: "-2px",
+        }}
+      >
+        {SITE.name}
+      </div>
+
+      {/* Subtitle */}
+      <div
+        style={{
+          fontSize: 32,
+          fontWeight: 500,
+          color: "#a1a1aa",
+          marginTop: 20,
+          lineHeight: 1.4,
+        }}
+      >
+        AI-first Software Engineer
+      </div>
+
+      {/* URL badge */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          marginTop: 48,
+          padding: "10px 24px",
+          borderRadius: 999,
+          border: "1px solid #333333",
+          background: "#111111",
+          color: "#71717a",
+          fontSize: 22,
+        }}
+      >
+        {displayHost}
+      </div>
+    </div>,
+    { ...size },
+  );
+}

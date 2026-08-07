@@ -1,0 +1,368 @@
+@import "tailwindcss";
+@plugin "@tailwindcss/typography";
+
+/*
+ * Tailwind v4 opacity modifier fix.
+ *
+ * Opacity modifiers (/10, /60, /[0.02]) only work on colors registered in
+ * @theme as --color-*. We cannot put theme-mode-switched values directly in
+ * @theme (it does not support :root/.dark overrides). The solution:
+ *
+ *   1. In :root / .dark, define raw CSS vars with actual color values
+ *      (no var() references — @theme needs to see the raw channel values
+ *       OR we use oklch/rgb literals that Tailwind can parse).
+ *   2. In @theme, alias those raw vars as --color-* tokens.
+ *
+ * Because @theme evaluates @theme at build time with CSS var() references,
+ * the actual runtime token switching is done by reassigning the underlying
+ * vars in :root/.dark. Tailwind v4 resolves the var() at runtime, so
+ * opacity channel arithmetic works correctly.
+ */
+
+@theme {
+  /* Brand colors (Glacier ramp: deep teal -> cyan-teal -> ice highlight) */
+  --color-brand-violet: #155e75;
+  --color-brand-cyan: #0891b2;
+  --color-brand-pink: #22d3ee;
+
+  /* Semantic design-system tokens — values come from :root / .dark vars */
+  --color-background: var(--bg);
+  --color-foreground: var(--fg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border-color);
+  --color-muted: var(--muted);
+  /* alias: several components use `text-muted-foreground`; map it to the same value */
+  --color-muted-foreground: var(--muted);
+  --color-ring: var(--ring);
+
+  /* Gradient — per-theme overrides set in :root / .dark below */
+  --gradient-brand: linear-gradient(135deg, #155e75 0%, #0891b2 100%);
+
+  /* Typography */
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Light theme — raw values for @theme var() references.
+   Ink/paper are hue-biased toward the brand violet (never pure black/white)
+   so text harmonizes with the ambient gradient. */
+:root {
+  --max-width: 1200px;
+  --bg: #f6f7f9;
+  --fg: #14181f;
+  /* Translucent so cards read as glass over the ambient canvas, not white slabs */
+  --surface: rgba(255, 255, 255, 0.6);
+  --surface-2: rgba(20, 24, 31, 0.03);
+  --border-color: rgba(20, 24, 31, 0.15);
+  --muted: rgba(20, 24, 31, 0.6);
+  --ring: #0e7490;
+  /* Raw brand vars for arbitrary-value utilities like border-(--brand-violet).
+     The @theme --color-brand-* tokens only generate the --color-* namespace,
+     so components referencing the bare names need these aliases. */
+  --brand-violet: #155e75;
+  --brand-cyan: #0891b2;
+  --brand-pink: #22d3ee;
+  /* Redesign tokens: hero name stroke + full-screen menu ground */
+  --name-stroke: rgba(20, 24, 31, 0.88);
+  --overlay-bg: rgba(246, 247, 249, 0.94);
+  /* Experience period label: brand cyan is too light on paper — use a deep teal */
+  --period: #0e7490;
+  /* Accent text on translucent brand chips (project language etc.): deep on paper */
+  --accent-on-chip: #155e75;
+  /* Opaque brand-tinted chip surface — subtle violet wash over paper, so the
+     chip reads as "brand" (not dead black) yet blocks the moving gradient. */
+  --chip-surface: #ecf5f8;
+  /* Legacy aliases kept for existing components */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  /* Light gradient: deeper/more saturated so it reads rich on white */
+  --gradient-brand: linear-gradient(135deg, #155e75 0%, #0891b2 100%);
+  /* Brand gradient for TEXT (gradient-text/stats). On paper the rich ramp reads
+     high-contrast, so it matches --gradient-brand; in dark it brightens (below)
+     so gradient text never fades into the deep ground. */
+  --gradient-ink: linear-gradient(135deg, #155e75 0%, #0891b2 100%);
+  /* Nav active pill opacity for light (higher so the pill is visible) */
+  --nav-pill-opacity: 0.28;
+}
+
+/* Dark theme */
+.dark {
+  --bg: #060c0e;
+  --fg: #e8f4f7;
+  --surface: rgba(255, 255, 255, 0.04);
+  --surface-2: rgba(255, 255, 255, 0.06);
+  --border-color: rgba(209, 233, 240, 0.16);
+  --muted: rgba(209, 233, 240, 0.62);
+  --ring: #0891b2;
+  --name-stroke: rgba(224, 242, 247, 0.9);
+  --overlay-bg: rgba(6, 12, 14, 0.92);
+  /* Dark: the vivid cyan reads fine on the deep ground */
+  --period: #22d3ee;
+  /* Dark: a bright lavender so brand chips are legible on the deep ground */
+  --accent-on-chip: #7dd3e8;
+  /* Opaque deep-violet chip surface: immersive brand tone, not flat black. */
+  --chip-surface: #0c1f27;
+  /* Legacy aliases */
+  --background: var(--bg);
+  --foreground: var(--fg);
+  /* Dark gradient: vivid original hues */
+  --gradient-brand: linear-gradient(135deg, #155e75 0%, #0891b2 100%);
+  /* Brand gradient for TEXT in dark: a brighter ice ramp so both ends clear the
+     deep ground (the brand ramp's #155e75 end is nearly invisible on #060c0e).
+     Used by gradient-text everywhere (logo wordmark, tagline, stats, headings). */
+  --gradient-ink: linear-gradient(135deg, #22d3ee 0%, #7dd3e8 100%);
+  /* Nav active pill opacity for dark */
+  --nav-pill-opacity: 0.2;
+}
+/*
+ * NOTE: Do NOT add a global "star { padding: 0; margin: 0 }" reset here.
+ * Tailwind v4 Preflight (via @import "tailwindcss") already resets margins
+ * and box-sizing correctly INSIDE a cascade layer. An unlayered universal
+ * reset overrides every Tailwind padding/margin utility, because unlayered
+ * CSS beats layered utilities regardless of specificity, silently breaking
+ * spacing app-wide. Preflight handles the reset properly.
+ */
+html {
+  scroll-behavior: smooth;
+}
+/*
+ * Suppress every transition/animation until `theme-ready` is set (one frame
+ * after next-themes applies the resolved theme class). Without this, the
+ * initial system-theme light->dark flip cross-fades through each element's
+ * own transition-* — the nav border/background and the hero divider are the
+ * most visible, reading as a flicker. `!important` beats utility transitions.
+ */
+html:not(.theme-ready) *,
+html:not(.theme-ready) *::before,
+html:not(.theme-ready) *::after {
+  transition: none !important;
+}
+html,
+body {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+/*
+ * NOTE: no unlayered element resets for `a`, `button`, or `*` here. An
+ * unlayered rule like `a { color: inherit }` or `button { background:
+ * transparent }` overrides Tailwind's `text-*`/`bg-*` utilities (unlayered CSS
+ * beats layered utilities regardless of specificity) — this silently broke
+ * button/link text colors and backgrounds app-wide (e.g. a primary <a> button
+ * rendering black text instead of white). Tailwind Preflight already resets
+ * anchors (color: inherit) and buttons inside its layer, so utilities win.
+ * We only keep link styling as a Tailwind utility (link-reset) where needed.
+ */
+/*
+ * Anchor base: only remove underline. Do NOT set `color` here — Tailwind
+ * Preflight already makes anchors inherit color in its base layer (lower than
+ * utilities), so explicit text-* utilities on a link win. Setting color here
+ * (even via @apply) creates a same-layer fight that breaks button text colors.
+ */
+@layer base {
+  a {
+    text-decoration: none;
+  }
+  /* Modern UA/Preflight resets set buttons to `cursor: default`; restore the
+     pointer affordance for all enabled buttons and button-role elements. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]) {
+    cursor: pointer;
+  }
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Brand gradient clipped to text. Uses --gradient-ink (theme-aware: rich on
+   paper, bright ice in dark) so gradient text is legible in both themes. */
+@utility gradient-text {
+  background-image: var(--gradient-ink);
+  background-clip: text;
+  -webkit-background-clip: text;
+  color: transparent;
+}
+
+/* Shared horizontal rhythm: the hero's fluid gutter is the reference, so the
+   nav, every Section, and the Footer use the same edges — no max-width cap,
+   6vw gutters on >= sm, a comfortable 1.5rem on mobile. Change it here once. */
+@utility site-container {
+  padding-inline: 1.5rem;
+}
+@media (width >= 40rem) {
+  .site-container {
+    padding-inline: 6vw;
+  }
+}
+
+/* Hero display: transparent fill with a theme-aware stroke */
+@utility text-stroke-name {
+  -webkit-text-stroke: 2px var(--name-stroke);
+  color: transparent;
+  letter-spacing: 0.04em;
+}
+
+/* Text-protection scrim: quiets the ambient gradient under the hero headline
+   block only - corners and edges stay vivid. Both themes via var(--bg). */
+.hero-scrim {
+  background: radial-gradient(
+    95% 64% ellipse at 26% 52%,
+    color-mix(in srgb, var(--bg) 78%, transparent) 0%,
+    color-mix(in srgb, var(--bg) 42%, transparent) 42%,
+    transparent 70%
+  );
+}
+
+/* Hero roles marquee: duplicated track, translate by half for a seamless loop */
+@keyframes marquee-left {
+  to {
+    transform: translateX(-50%);
+  }
+}
+.hero-marquee-track {
+  animation: marquee-left 26s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-marquee-track {
+    animation: none;
+  }
+}
+
+/* Custom cursor active: hide the native cursor everywhere while it renders */
+html.cursor-hidden,
+html.cursor-hidden * {
+  cursor: none !important;
+}
+
+/* ── Dialog motion (Radix data-state driven) ─────────────────────────────
+   Scale + fade on the brand ease curve. We animate the standalone `scale`
+   property (NOT `transform`) so it composes with Tailwind's
+   -translate-x/y-1/2 centering instead of overriding it — animating
+   `transform` here made the modal jump from a mis-centered spot to center
+   when the animation ended and the utility transform took back over.
+   animation-fill-mode: both holds the first/last frame so there is no
+   pre-animation flash either. */
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    scale: 0.94;
+  }
+  to {
+    opacity: 1;
+    scale: 1;
+  }
+}
+@keyframes dialog-out {
+  from {
+    opacity: 1;
+    scale: 1;
+  }
+  to {
+    opacity: 0;
+    scale: 0.94;
+  }
+}
+.dialog-pop[data-state="open"] {
+  animation: dialog-in 0.28s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.dialog-pop[data-state="closed"] {
+  animation: dialog-out 0.2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+@keyframes overlay-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes overlay-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+.dialog-overlay-fade[data-state="open"] {
+  animation: overlay-in 0.28s ease;
+}
+.dialog-overlay-fade[data-state="closed"] {
+  animation: overlay-out 0.2s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .dialog-pop[data-state],
+  .dialog-overlay-fade[data-state] {
+    animation: none;
+  }
+}
+
+@keyframes meteor {
+  0% {
+    transform: rotate(215deg) translateX(0);
+    opacity: 1;
+  }
+  70% {
+    opacity: 1;
+  }
+  100% {
+    transform: rotate(215deg) translateX(-500px);
+    opacity: 0;
+  }
+}
+
+.meteor {
+  animation-name: meteor;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+.meteor::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 50px;
+  height: 1px;
+  background: linear-gradient(90deg, var(--color-brand-cyan), transparent);
+}
+
+/* Vertical marquee for the testimonials grid. The track renders its items
+   twice; translating up by 50% creates a seamless loop. Paused on hover and
+   disabled entirely under reduced-motion. */
+@keyframes marquee-up {
+  from {
+    transform: translateY(0);
+  }
+  to {
+    /* -100% = one set's height (the duplicate is out of flow, so the track's
+       own height equals a single set + its trailing gap). */
+    transform: translateY(-100%);
+  }
+}
+.marquee-track {
+  animation: marquee-up linear infinite;
+}
+.marquee-group:hover .marquee-track {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track {
+    animation: none;
+  }
+}

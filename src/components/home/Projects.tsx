@@ -1,0 +1,63 @@
+import { ArrowUpRight } from "lucide-react";
+import { Reveal } from "@/components/motion/Reveal";
+import { Magnetic } from "@/components/motion/Magnetic";
+import { Section, SectionHeading } from "@/components/ui/Section";
+import { Button } from "@/components/ui/Button";
+import { ProjectCard } from "./ProjectCard";
+import { RepoCard } from "./RepoCard";
+import type { MergedProject } from "@/lib/projects";
+
+const GITHUB_PROFILE = "https://github.com/AGASTYA12343534";
+
+export function Projects({ projects }: { projects: MergedProject[] }) {
+  const featured = projects.filter((p) => p.featured);
+  const rest = projects.filter((p) => !p.featured);
+
+  return (
+    <Section id="projects" className="scroll-mt-24">
+      <Reveal>
+        <SectionHeading number="05" eyebrow="Projects" title="Featured work" />
+      </Reveal>
+
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {featured.map((p, i) => (
+          <Reveal key={p.id} delay={(i % 3) * 0.05} className="h-full">
+            <ProjectCard project={p} />
+          </Reveal>
+        ))}
+      </div>
+
+      {rest.length > 0 && (
+        <div className="mt-16">
+          <h3 className="text-muted mb-4 text-sm font-semibold tracking-wider uppercase">
+            More repositories
+          </h3>
+          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {rest.map((p) => (
+              <li key={p.id}>
+                <RepoCard project={p} />
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      <div className="mt-12 text-center">
+        <Magnetic>
+          <Button
+            href={GITHUB_PROFILE}
+            variant="secondary"
+            size="md"
+            target="_blank"
+            rel="noopener noreferrer"
+            leftIcon={<ArrowUpRight className="size-4" aria-hidden />}
+          >
+            View all on GitHub
+          </Button>
+        </Magnetic>
+      </div>
+    </Section>
+  );
+}
+
+export default Projects;

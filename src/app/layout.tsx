@@ -1,0 +1,128 @@
+import "./globals.css";
+import { GeistSans } from "geist/font/sans";
+import { GeistMono } from "geist/font/mono";
+import { ReactNode } from "react";
+import { Metadata } from "next";
+import dynamic from "next/dynamic";
+import { Analytics as VercelAnalytics } from "@vercel/analytics/next";
+import { SpeedInsights } from "@vercel/speed-insights/next";
+import { GoogleAnalytics } from "@/components/analytics/GoogleAnalytics";
+import { ThemeProvider } from "@/components/providers/ThemeProvider";
+import { HashScrollFix } from "@/components/util/HashScrollFix";
+import { AmbientBackground } from "@/components/background/AmbientBackground";
+import { CustomCursor } from "@/components/motion/CustomCursor";
+import { PersonJsonLd, WebSiteJsonLd } from "@/lib/seo/jsonld";
+import { SITE } from "@/lib/seo/site";
+
+export const metadata: Metadata = {
+  metadataBase: new URL(SITE.url),
+  title: {
+    default: SITE.title,
+    template: `%s | Agastya`,
+  },
+  description: SITE.description,
+  keywords: [
+    "Agastya",
+    "AGASTYA12343534",
+    "software engineer",
+    "full-stack developer",
+    "ai lead",
+    "flutter",
+    "react",
+    "next.js",
+    "node.js",
+    "open source",
+    "indian developer",
+  ],
+  authors: [{ name: SITE.name, url: SITE.url }],
+  creator: SITE.name,
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
+  },
+  alternates: {
+    canonical: "/",
+  },
+  openGraph: {
+    type: "website",
+    url: SITE.url,
+    siteName: SITE.name,
+    title: SITE.title,
+    description: SITE.description,
+    locale: "en_US",
+    images: [{ url: "/opengraph-image" }],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SITE.title,
+    description: SITE.description,
+    creator: SITE.handle,
+  },
+  ...(process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION_TOKEN
+    ? {
+      verification: {
+        google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION_TOKEN,
+      },
+    }
+    : {}),
+};
+
+const ScrollToTop = dynamic(() => import("@/components/common/ScrollToTop"));
+
+const RootLayout = ({ children }: Readonly<{ children: ReactNode }>) => {
+  return (
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${GeistSans.variable} ${GeistMono.variable}`}
+    >
+      <head>
+        {/*
+         * First-paint transition guard. next-themes resolves the system theme
+         * on the client and flips the `dark` class; without this, every themed
+         * token (nav border/background, the hero divider, cards) would animate
+         * that initial light->dark flip through its own `transition-*`, which
+         * reads as a flicker. We mark `theme-ready` on the next frame after the
+         * theme class is applied; globals.css suppresses transitions until then
+         * so the settled theme paints once, with no cross-fade. Runs before
+         * paint (blocking, in <head>) so there is no unguarded frame.
+         */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "requestAnimationFrame(function(){document.documentElement.classList.add('theme-ready')})",
+          }}
+        />
+      </head>
+      <body className={GeistSans.className}>
+        <PersonJsonLd />
+        <WebSiteJsonLd />
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {/* Inside ThemeProvider: the canvas reads resolvedTheme for its blend mode */}
+          <AmbientBackground />
+          <main>{children}</main>
+          <ScrollToTop />
+          <CustomCursor />
+        </ThemeProvider>
+        <HashScrollFix />
+        <VercelAnalytics />
+        <SpeedInsights />
+        <GoogleAnalytics />
+      </body>
+    </html>
+  );
+};
+
+export default RootLayout;
