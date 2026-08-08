@@ -1,3 +1,5 @@
+import { unstable_cache } from "next/cache";
+
 export type CodeforcesData = {
   username: string;
   rating: string;
@@ -51,67 +53,76 @@ const FALLBACK_CODECHEF: CodeChefData = {
   lastUpdated: new Date().toISOString(),
 };
 
-// Revalidate every 12 hours
-const REVALIDATE = 43200;
+// Revalidate every 24 hours
+const REVALIDATE = 86400;
 
-export async function getCodeforcesProfile(): Promise<CodeforcesData> {
-  const timestamp = new Date().toISOString();
-  try {
+const fetchCodeforcesProfile = unstable_cache(
+  async (): Promise<CodeforcesData> => {
+    const timestamp = new Date().toISOString();
+    
     const [infoRes, statusRes] = await Promise.all([
-      fetch("https://codeforces.com/api/user.info?handles=GymForceNavi", {
-        next: { revalidate: REVALIDATE },
-      }).catch(() => null),
-      fetch("https://codeforces.com/api/user.status?handle=GymForceNavi", {
-        next: { revalidate: REVALIDATE },
-      }).catch(() => null),
+      fetch("https://codeforces.com/api/user.info?handles=GymForceNavi"),
+      fetch("https://codeforces.com/api/user.status?handle=GymForceNavi"),
     ]);
+
+    if (!infoRes.ok || !statusRes.ok) throw new Error("CF fetch failed");
+
+    const infoData = await infoRes.json();
+    const statusData = await statusRes.json();
 
     let rating = FALLBACK_CODEFORCES.rating;
     let maxRating = FALLBACK_CODEFORCES.maxRating;
     let rank = FALLBACK_CODEFORCES.rank;
     let problemsSolved = FALLBACK_CODEFORCES.problemsSolved;
 
-    if (infoRes && infoRes.ok) {
-      const data = await infoRes.json();
-      if (data.status === "OK" && data.result?.length > 0) {
-        const user = data.result[0];
-        rating = user.rating?.toString() || rating;
-        maxRating = user.maxRating?.toString() || maxRating;
-        rank = user.rank ? user.rank.charAt(0).toUpperCase() + user.rank.slice(1) : rank;
-      }
+    if (infoData.status === "OK" && infoData.result?.length > 0) {
+      const user = infoData.result[0];
+      rating = user.rating?.toString() || rating;
+      maxRating = user.maxRating?.toString() || maxRating;
+      rank = user.rank ? user.rank.charAt(0).toUpperCase() + user.rank.slice(1) : rank;
+    } else {
+      throw new Error("Invalid CF info data");
     }
 
-    if (statusRes && statusRes.ok) {
-      const data = await statusRes.json();
-      if (data.status === "OK" && data.result) {
-        const solved = new Set();
-        data.result.forEach((sub: any) => {
-          if (sub.verdict === "OK" && sub.problem?.contestId) {
-            solved.add(`${sub.problem.contestId}-${sub.problem.index}`);
-          }
-        });
-        problemsSolved = solved.size.toString();
-      }
+    if (statusData.status === "OK" && statusData.result) {
+      const solved = new Set();
+      statusData.result.forEach((sub: { verdict: string; problem?: { contestId: number; index: string } }) => {
+        if (sub.verdict === "OK" && sub.problem?.contestId) {
+          solved.add(`${sub.problem.contestId}-${sub.problem.index}`);
+        }
+      });
+      problemsSolved = solved.size.toString();
+    } else {
+      throw new Error("Invalid CF status data");
     }
 
     return { username: "GymForceNavi", rating, maxRating, rank, problemsSolved, lastUpdated: timestamp };
+  },
+  ["codeforces-profile-cache-v1"],
+  { revalidate: REVALIDATE }
+);
+
+export async function getCodeforcesProfile(): Promise<CodeforcesData> {
+  try {
+    return await fetchCodeforcesProfile();
   } catch (error) {
     console.error("Codeforces error:", error);
-    return { ...FALLBACK_CODEFORCES, lastUpdated: timestamp };
+    return { ...FALLBACK_CODEFORCES, lastUpdated: new Date().toISOString() };
   }
 }
 
-export async function getLeetCodeProfile(): Promise<LeetCodeData> {
-  const timestamp = new Date().toISOString();
-  try {
+const fetchLeetCodeProfile = unstable_cache(
+  async (): Promise<LeetCodeData> => {
+    const timestamp = new Date().toISOString();
     const [contestRes, solvedRes] = await Promise.all([
-      fetch("https://alfa-leetcode-api.onrender.com/Agastya_06/contest", {
-        next: { revalidate: REVALIDATE },
-      }).catch(() => null),
-      fetch("https://alfa-leetcode-api.onrender.com/Agastya_06/solved", {
-        next: { revalidate: REVALIDATE },
-      }).catch(() => null),
+      fetch("https://alfa-leetcode-api.onrender.com/Agastya_06/contest"),
+      fetch("https://alfa-leetcode-api.onrender.com/Agastya_06/solved"),
     ]);
+
+    if (!contestRes.ok || !solvedRes.ok) throw new Error("LC fetch failed");
+
+    const contestData = await contestRes.json();
+    const solvedData = await solvedRes.json();
 
     let contestRating = FALLBACK_LEETCODE.contestRating;
     let problemsSolved = FALLBACK_LEETCODE.problemsSolved;
@@ -119,39 +130,43 @@ export async function getLeetCodeProfile(): Promise<LeetCodeData> {
     let medium = FALLBACK_LEETCODE.medium;
     let hard = FALLBACK_LEETCODE.hard;
 
-    if (contestRes && contestRes.ok) {
-      const data = await contestRes.json();
-      if (data.contestRating) {
-        contestRating = Math.round(data.contestRating).toString();
-      }
+    if (contestData.contestRating) {
+      contestRating = Math.round(contestData.contestRating).toString();
     }
 
-    if (solvedRes && solvedRes.ok) {
-      const data = await solvedRes.json();
-      if (data.solvedProblem !== undefined) {
-        problemsSolved = data.solvedProblem.toString();
-        easy = data.easySolved?.toString() || easy;
-        medium = data.mediumSolved?.toString() || medium;
-        hard = data.hardSolved?.toString() || hard;
-      }
+    if (solvedData.solvedProblem !== undefined) {
+      problemsSolved = solvedData.solvedProblem.toString();
+      easy = solvedData.easySolved?.toString() || easy;
+      medium = solvedData.mediumSolved?.toString() || medium;
+      hard = solvedData.hardSolved?.toString() || hard;
+    } else {
+      throw new Error("Invalid LC solved data");
     }
 
     return { problemsSolved, easy, medium, hard, contestRating, lastUpdated: timestamp };
+  },
+  ["leetcode-profile-cache-v1"],
+  { revalidate: REVALIDATE }
+);
+
+export async function getLeetCodeProfile(): Promise<LeetCodeData> {
+  try {
+    return await fetchLeetCodeProfile();
   } catch (error) {
     console.error("LeetCode error:", error);
-    return { ...FALLBACK_LEETCODE, lastUpdated: timestamp };
+    return { ...FALLBACK_LEETCODE, lastUpdated: new Date().toISOString() };
   }
 }
 
-export async function getCodeChefProfile(): Promise<CodeChefData> {
-  const timestamp = new Date().toISOString();
-  try {
+const fetchCodeChefProfile = unstable_cache(
+  async (): Promise<CodeChefData> => {
+    const timestamp = new Date().toISOString();
     const res = await fetch("https://www.codechef.com/users/gymgeek_coder", {
       headers: {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
       },
-      next: { revalidate: REVALIDATE },
     });
+    
     if (!res.ok) throw new Error("Failed to fetch CC");
     const html = await res.text();
 
@@ -160,6 +175,11 @@ export async function getCodeChefProfile(): Promise<CodeChefData> {
     const starMatch = html.match(/<span class="rating">([^<]+)<\/span>/);
     const solvedMatch = html.match(/Total Problems Solved: (\d+)/);
 
+    // If we fail to parse anything, treat it as an error to keep stale cache
+    if (!ratingMatch && !solvedMatch) {
+      throw new Error("CC parsing failed");
+    }
+
     return {
       rating: ratingMatch ? ratingMatch[1] : FALLBACK_CODECHEF.rating,
       maxRating: highestMatch ? highestMatch[1] : FALLBACK_CODECHEF.maxRating,
@@ -167,8 +187,16 @@ export async function getCodeChefProfile(): Promise<CodeChefData> {
       problemsSolved: solvedMatch ? solvedMatch[1] : FALLBACK_CODECHEF.problemsSolved,
       lastUpdated: timestamp,
     };
+  },
+  ["codechef-profile-cache-v1"],
+  { revalidate: REVALIDATE }
+);
+
+export async function getCodeChefProfile(): Promise<CodeChefData> {
+  try {
+    return await fetchCodeChefProfile();
   } catch (error) {
     console.error("CodeChef error:", error);
-    return { ...FALLBACK_CODECHEF, lastUpdated: timestamp };
+    return { ...FALLBACK_CODECHEF, lastUpdated: new Date().toISOString() };
   }
 }

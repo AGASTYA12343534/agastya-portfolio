@@ -12,7 +12,7 @@ export type MergedProject = Project & {
 };
 
 export async function getProjects(): Promise<MergedProject[]> {
-  const curation = projectsData as any as Project[];
+  const curation = projectsData as unknown as Project[];
   
   const OWNER = "AGASTYA12343534";
   const slugs = curation.map((c) => `${OWNER}/${c.repo}`);

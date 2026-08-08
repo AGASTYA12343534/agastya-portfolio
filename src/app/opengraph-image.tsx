@@ -8,6 +8,7 @@ export const runtime = "nodejs";
 export const alt = SITE.title;
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
+export const dynamic = "force-dynamic";
 
 export default async function OpengraphImage() {
   // Display host derived from the configured site URL, not hardcoded, so the

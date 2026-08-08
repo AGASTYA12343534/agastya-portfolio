@@ -4,8 +4,6 @@ import {
   Network,
   Database,
   Cpu,
-  Server,
-  Terminal,
   Blocks,
   Binary,
   BrainCircuit,

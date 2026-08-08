@@ -47,6 +47,7 @@ export async function getProfile(): Promise<{
   sectionVisibility: Record<string, boolean>;
   stats: { years: number; repos: number; dsa: number; followers: number };
 }> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return profileData as any;
 }
 
