@@ -11,7 +11,7 @@ export const profileData = {
     "ML Enthusiast"
   ],
   resumeUrl: "",
-  avatarUrl: "/profile.webp",
+  avatarUrl: "/profile.png",
   heroTagline: "Building AI-powered products that solve real-world problems.",
   sectionVisibility: {},
 };
