@@ -28,8 +28,8 @@ export async function getProjects(): Promise<MergedProject[]> {
       stars: stats?.stars ?? 0,
       forks: stats?.forks ?? 0,
       language: stats?.language ?? null,
-      description: stats?.description ?? null,
-      homepage: stats?.homepage ?? null,
+      description: c.customBlurb ?? stats?.description ?? null,
+      homepage: (c as any).homepage ?? stats?.homepage ?? null,
       htmlUrl: stats?.htmlUrl ?? `https://github.com/${slug}`,
     };
   }).sort((a, b) => {
